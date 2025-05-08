@@ -1,10 +1,313 @@
-import { PrismaClient, DeviceStatus, SeverityLevel } from "@prisma/client";
+import {
+  PrismaClient,
+  DeviceStatus,
+  SeverityLevel,
+  Role,
+} from "@prisma/client";
 import { randomInt } from "crypto";
+import * as bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("Starting KPI data seeding...");
+
+  // Create sample devices
+  console.log("Creating sample devices...");
+  const deviceTypes = ["Ceinture", "Canne_Augment_", "Lunnettes_Connect_es"];
+  const deviceStatus: DeviceStatus[] = [
+    "connected",
+    "disconnected",
+    "under_maintenance",
+    "out_of_service",
+    "defective",
+  ];
+
+  const devicesToCreate = [
+    {
+      nom: "Smart Belt Pro",
+      macAdresse: "AA:BB:CC:DD:EE:01",
+      status: "connected" as DeviceStatus,
+      type: deviceTypes[0],
+      peripheriques: JSON.stringify({
+        sensors: ["accelerometer", "gps", "heartrate"],
+        batteryLevel: 85,
+      }),
+      localisation: JSON.stringify({
+        latitude: 48.8566,
+        longitude: 2.3522,
+        lastUpdate: new Date(),
+      }),
+      cpuUsage: 15.3,
+      ramUsage: 43.7,
+      price: 1299,
+    },
+    {
+      nom: "SmartCane 2000",
+      macAdresse: "AA:BB:CC:DD:EE:02",
+      status: "connected" as DeviceStatus,
+      type: deviceTypes[1],
+      peripheriques: JSON.stringify({
+        sensors: ["proximity", "gps", "vibration"],
+        batteryLevel: 92,
+      }),
+      localisation: JSON.stringify({
+        latitude: 48.8584,
+        longitude: 2.3536,
+        lastUpdate: new Date(),
+      }),
+      cpuUsage: 12.1,
+      ramUsage: 38.2,
+      price: 1599,
+    },
+    {
+      nom: "Vision AR Glasses",
+      macAdresse: "AA:BB:CC:DD:EE:03",
+      status: "under_maintenance" as DeviceStatus,
+      type: deviceTypes[2],
+      peripheriques: JSON.stringify({
+        sensors: ["camera", "microphone", "motion"],
+        batteryLevel: 64,
+      }),
+      localisation: JSON.stringify({
+        latitude: 48.8606,
+        longitude: 2.3376,
+        lastUpdate: new Date(),
+      }),
+      cpuUsage: 45.2,
+      ramUsage: 72.8,
+      price: 2499,
+    },
+    {
+      nom: "MoveSafe Belt",
+      macAdresse: "AA:BB:CC:DD:EE:04",
+      status: "disconnected" as DeviceStatus,
+      type: deviceTypes[0],
+      peripheriques: JSON.stringify({
+        sensors: ["accelerometer", "gps", "temperature"],
+        batteryLevel: 22,
+      }),
+      localisation: JSON.stringify({
+        latitude: 48.8719,
+        longitude: 2.3416,
+        lastUpdate: new Date(),
+      }),
+      cpuUsage: 0,
+      ramUsage: 0,
+      price: 999,
+    },
+    {
+      nom: "GuideVision Cane",
+      macAdresse: "AA:BB:CC:DD:EE:05",
+      status: "defective" as DeviceStatus,
+      type: deviceTypes[1],
+      peripheriques: JSON.stringify({
+        sensors: ["proximity", "gps", "obstacle"],
+        batteryLevel: 5,
+      }),
+      localisation: JSON.stringify({
+        latitude: 48.8697,
+        longitude: 2.3501,
+        lastUpdate: new Date(),
+      }),
+      cpuUsage: 89.7,
+      ramUsage: 95.3,
+      price: 1499,
+    },
+  ];
+
+  for (const deviceData of devicesToCreate) {
+    try {
+      // Check if device with the same MAC address already exists
+      const existingDevice = await prisma.device.findFirst({
+        where: { macAdresse: deviceData.macAdresse },
+      });
+
+      if (existingDevice) {
+        console.log(`Device with MAC ${deviceData.macAdresse} already exists`);
+        continue;
+      }
+
+      // Create the device
+      const device = await prisma.device.create({
+        data: {
+          nom: deviceData.nom,
+          macAdresse: deviceData.macAdresse,
+          status: deviceData.status,
+          peripheriques: deviceData.peripheriques,
+          localisation: deviceData.localisation,
+          cpuUsage: deviceData.cpuUsage,
+          ramUsage: deviceData.ramUsage,
+          price: deviceData.price,
+          manufacturingCost: Math.round(deviceData.price * 0.45), // 45% of price as manufacturing cost
+          createdAt: new Date(),
+          type: deviceData.type,
+        },
+      });
+
+      console.log(
+        `Created device: ${deviceData.nom} with MAC ${deviceData.macAdresse}`
+      );
+    } catch (error) {
+      console.error(`Error creating device ${deviceData.nom}:`, error);
+    }
+  }
+  console.log(`Attempted to create ${devicesToCreate.length} devices`);
+
+  // Adding User Creation with Password Hashing
+  console.log("Creating users with hashed passwords...");
+
+  // Create user data with different roles
+  const usersToCreate = [
+    {
+      email: "admin@example.com",
+      password: "admin123",
+      role: "super" as Role,
+      profile: {
+        firstname: "Admin",
+        lastname: "User",
+        phonenumber: "+1234567890",
+        address: "123 Admin Street",
+      },
+    },
+    {
+      email: "decider@app.com",
+      password: "decider",
+      role: "decider" as Role,
+      profile: {
+        firstname: "Decider",
+        lastname: "User",
+        phonenumber: "+1234567890",
+        address: "123 Decider Street",
+      },
+    },
+    {
+      email: "commercial@example.com",
+      password: "commercial123",
+      role: "commercial" as Role,
+      profile: {
+        firstname: "Commercial",
+        lastname: "Agent",
+        phonenumber: "+1987654321",
+        address: "456 Sales Avenue",
+      },
+    },
+    {
+      email: "enduser1@example.com",
+      password: "enduser123",
+      role: "endUser" as Role,
+      profile: {
+        firstname: "End",
+        lastname: "User1",
+        phonenumber: "+1122334455",
+        address: "789 User Boulevard",
+      },
+    },
+    {
+      email: "helper@example.com",
+      password: "helper123",
+      role: "helper" as Role,
+      profile: {
+        firstname: "Helper",
+        lastname: "Support",
+        phonenumber: "+1555666777",
+        address: "101 Support Lane",
+      },
+    },
+    {
+      email: "maintainer@example.com",
+      password: "maintain123",
+      role: "maintainer" as Role,
+      profile: {
+        firstname: "Maintenance",
+        lastname: "Tech",
+        phonenumber: "+1777888999",
+        address: "202 Repair Road",
+      },
+    },
+  ];
+
+  // Function to create a user with bcrypt hashed password
+  const createUser = async (userData) => {
+    try {
+      // Check if user already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: userData.email },
+      });
+
+      if (existingUser) {
+        console.log(`User ${userData.email} already exists`);
+        return existingUser;
+      }
+
+      // Hash password with bcrypt (10 salt rounds)
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+
+      // Create user with hashed password
+      const user = await prisma.user.create({
+        data: {
+          email: userData.email,
+          password: hashedPassword,
+          role: userData.role,
+          Profile: {
+            create: userData.profile,
+          },
+          createdAt: new Date(),
+          lastLogin: new Date(
+            Date.now() - randomInt(1, 30) * 24 * 60 * 60 * 1000
+          ),
+        },
+      });
+
+      // Create role-specific records
+      if (userData.role === "super") {
+        await prisma.admin.create({
+          data: {
+            userId: user.id,
+            role: "super" as Role,
+          },
+        });
+      } else if (userData.role === "commercial") {
+        await prisma.commercial.create({
+          data: {
+            userId: user.id,
+          },
+        });
+      } else if (userData.role === "endUser") {
+        await prisma.endUser.create({
+          data: {
+            userId: user.id,
+            status: "active",
+          },
+        });
+      } else if (userData.role === "helper") {
+        await prisma.helper.create({
+          data: {
+            userId: user.id,
+          },
+        });
+      } else if (userData.role === "maintainer") {
+        await prisma.maintainer.create({
+          data: {
+            userId: user.id,
+          },
+        });
+      }
+
+      console.log(`Created user: ${userData.email} with role ${userData.role}`);
+      return user;
+    } catch (error) {
+      console.error(`Error creating user ${userData.email}:`, error);
+      throw error;
+    }
+  };
+
+  // Create all users
+  for (const userData of usersToCreate) {
+    await createUser(userData);
+  }
+  console.log(`Created ${usersToCreate.length} users with hashed passwords`);
 
   // 1. Update devices with manufacturing costs
   console.log("Adding manufacturing costs to existing devices...");
@@ -353,16 +656,29 @@ async function main() {
 
   // Insert the KPI records
   for (const kpi of kpiData) {
-    await prisma.kPI.create({
-      data: {
-        name: kpi.name,
-        value: kpi.value,
-        createdAt: new Date(
-          Date.now() - randomInt(1, 30) * 24 * 60 * 60 * 1000
-        ),
-        updatedAt: new Date(),
-      },
+    const existingKpi = await prisma.kPI.findUnique({
+      where: { name: kpi.name },
     });
+    if (existingKpi) {
+      await prisma.kPI.update({
+        where: { name: kpi.name },
+        data: {
+          value: kpi.value,
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      await prisma.kPI.create({
+        data: {
+          name: kpi.name,
+          value: kpi.value,
+          createdAt: new Date(
+            Date.now() - randomInt(1, 30) * 24 * 60 * 60 * 1000
+          ),
+          updatedAt: new Date(),
+        },
+      });
+    }
   }
 
   console.log(`Created ${kpiData.length} KPI records.`);
