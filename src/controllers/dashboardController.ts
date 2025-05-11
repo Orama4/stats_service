@@ -13,7 +13,7 @@ export const getSalesKPIs = async (
     const totalSales = await prisma.sale.count();
     const salesWithDevices = await prisma.sale.findMany({
       include: {
-        device: {
+        Device: {
           select: {
             price: true,
           },
@@ -22,7 +22,7 @@ export const getSalesKPIs = async (
     });
 
     const totalRevenue = salesWithDevices.reduce((sum, sale) => {
-      return sum + (sale.device?.price || 0);
+      return sum + (sale.Device?.price || 0);
     }, 0);
     const totalUsers = await prisma.user.count();
 
