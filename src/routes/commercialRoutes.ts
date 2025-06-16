@@ -24,6 +24,56 @@ import { authMiddleware } from "../middlewares/authMiddleware";
  *           type: string
  *         errors:
  *           type: object
+ *     Client:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Client ID
+ *         email:
+ *           type: string
+ *           description: Client email
+ *         role:
+ *           type: string
+ *           enum: [endUser]
+ *           description: User role
+ *         Profile:
+ *           type: object
+ *           properties:
+ *             firstname:
+ *               type: string
+ *             lastname:
+ *               type: string
+ *             phonenumber:
+ *               type: string
+ *             address:
+ *               type: string
+ *         EndUser:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: integer
+ *             status:
+ *               type: string
+ *     Product:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Product ID
+ *         type:
+ *           type: string
+ *           description: Product type
+ *         description:
+ *           type: string
+ *           description: Product description
+ *         price:
+ *           type: number
+ *           description: Product price
+ *         status:
+ *           type: string
+ *           enum: [connected, disconnected]
+ *           description: Product status
  */
 
 const router = express.Router();
@@ -165,6 +215,124 @@ router.get("/clients/:id", commercialController.getClientDetails);
  */
 router.post("/clients", commercialController.createClient);
 
+/**
+ * @swagger
+ * /commercial/clientts:
+ *   post:
+ *     summary: Create new product
+ *     tags: [Commercial]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 description: Product type
+ *               description:
+ *                 type: string
+ *                 description: Product description
+ *               price:
+ *                 type: number
+ *                 description: Product price
+ *               status:
+ *                 type: string
+ *                 enum: [connected, disconnected]
+ *                 description: Product status
+ *             required:
+ *               - type
+ *     responses:
+ *       201:
+ *         description: Product created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Response'
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Server error
+ */
+router.post("/products", commercialController.createProduct);
+
+/**
+ * @swagger
+ * /commercial/products/{id}:
+ *   put:
+ *     summary: Update product
+ *     tags: [Commercial]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Product ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 description: Product type
+ *               description:
+ *                 type: string
+ *                 description: Product description
+ *               price:
+ *                 type: number
+ *                 description: Product price
+ *               status:
+ *                 type: string
+ *                 enum: [connected, disconnected]
+ *                 description: Product status
+ *     responses:
+ *       200:
+ *         description: Product updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Response'
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Product not found
+ *       500:
+ *         description: Server error
+ */
+router.put("/products/:id", commercialController.updateProduct);
+
+/**
+ * @swagger
+ * /commercial/products/{id}:
+ *   delete:
+ *     summary: Delete product
+ *     tags: [Commercial]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Response'
+ *       404:
+ *         description: Product not found
+ *       500:
+ *         description: Server error
+ */
+router.delete("/products/:id", commercialController.deleteProduct);
+
 // Sales endpoints section - continued documentation pattern
 // Order matters! Define specific routes BEFORE parameterized routes to avoid conflicts
 router.get("/sales/stats", commercialController.getSalesStats); // Specific route first
@@ -179,11 +347,53 @@ router.delete("/sales/:id", commercialController.deleteSale);
 router.get("/products/types", commercialController.getProductTypes); // Specific route first
 router.get("/products/stats", commercialController.getProductStats); // Specific route first
 router.get("/products", commercialController.getAllProducts);
+router.post("/products", commercialController.createProduct);
 // Parameterized routes last
 router.get("/products/:id", commercialController.getProductDetails);
+router.put("/products/:id", commercialController.updateProduct);
+router.delete("/products/:id", commercialController.deleteProduct);
 
 // Remaining client endpoints
 router.put("/clients/:id", commercialController.updateClient);
+
+/**
+ * @swagger
+ * /commercial/clients/{id}/password:
+ *   put:
+ *     summary: Update client password
+ *     tags: [Commercial]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Client ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: New password
+ *             required:
+ *               - password
+ *     responses:
+ *       200:
+ *         description: Password updated successfully
+ *       400:
+ *         description: Invalid input or client ID
+ *       404:
+ *         description: Client not found
+ *       500:
+ *         description: Server error
+ */
+router.put("/clients/:id/password", commercialController.updateClientPassword);
+
 router.delete("/clients/:id", commercialController.deleteClient);
 router.get("/clients/:id/contacts", commercialController.getClientContacts);
 router.post("/clients/:id/contacts", commercialController.addClientContact);

@@ -1,5 +1,6 @@
 import { DeviceStatus, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import bcrypt from 'bcrypt';
 
 // Dashboard related services
 export const getDashboardStats = async () => {
@@ -455,4 +456,213 @@ export const getDistinctProductTypes = async () => {
   });
   
   return deviceTypes.map(device => device.type);
+};
+
+// Create client function
+export const createClient = async (
+  email: string,
+  password: string,
+  firstname: string,
+  lastname: string,
+  phonenumber: string,
+  address?: string
+) => {
+  // Create user with endUser role and profile in a transaction
+  return prisma.$transaction(async (tx) => {
+    // Check if email is already in use
+    const existingUser = await tx.user.findUnique({
+      where: { email }
+    });
+    
+    if (existingUser) {
+      throw new Error(`Email ${email} is already in use`);
+    }
+    
+    // Hash the password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    
+    // Create the user with hashed password
+    const user = await tx.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        role: Role.endUser
+      }
+    });
+    
+    // Create user profile
+    await tx.profile.create({
+      data: {
+        userId: user.id,
+        firstname,
+        lastname,
+        phonenumber,
+        address
+      }
+    });
+    
+    // Create endUser record
+    await tx.endUser.create({
+      data: {
+        userId: user.id,
+        status: "active"
+      }
+    });
+    
+    // Return the created user with its profile and endUser data
+    return tx.user.findUnique({
+      where: { id: user.id },
+      include: {
+        Profile: true,
+        EndUser: true
+      }
+    });
+  });
+};
+
+// Create new product (device)
+export const createProduct = async (
+  type: string,
+  description: string,
+  price?: number,
+  status: DeviceStatus = DeviceStatus.connected
+) => {
+  return prisma.device.create({
+    data: {
+      type,
+      nom: description,
+      macAdresse: "NEW_DEVICE",
+      status,
+      price: price ? Math.round(price) : null,
+    }
+  });
+};
+
+// Update product (device)
+export const updateProduct = async (
+  deviceId: number,
+  type?: string,
+  description?: string,
+  price?: number,
+  status?: DeviceStatus
+) => {
+  // Build the update data object
+  const updateData: any = {};
+  if (type !== undefined) updateData.type = type;
+  if (description !== undefined) updateData.nom = description;
+  if (price !== undefined) updateData.price = Math.round(price); // Make sure price is an integer
+  if (status !== undefined) updateData.status = status;
+  
+  // Only update if there are fields to update
+  if (Object.keys(updateData).length === 0) {
+    return prisma.device.findUnique({
+      where: { id: deviceId }
+    });
+  }
+  
+  return prisma.device.update({
+    where: { id: deviceId },
+    data: updateData
+  });
+};
+
+// Delete/deactivate product (device)
+export const deleteProduct = async (deviceId: number) => {
+  // Check if the device is associated with any sales
+  const device = await prisma.device.findUnique({
+    where: { id: deviceId },
+    include: { Sale: true }
+  });
+  
+  if (!device) {
+    throw new Error(`Device with ID ${deviceId} not found`);
+  }
+  
+  if (device.Sale && device.Sale.length > 0) {
+    // If device has sales, just mark it as disconnected
+    return prisma.device.update({
+      where: { id: deviceId },
+      data: { status: DeviceStatus.disconnected }
+    });
+  }
+  
+  // If no sales, we can safely delete the device
+  return prisma.device.delete({
+    where: { id: deviceId }
+  });
+};
+
+// Get all products with filtering and pagination
+export const getProducts = async (
+  page: number = 1,
+  limit: number = 10,
+  search: string = "",
+  type?: string,
+  status?: DeviceStatus
+) => {
+  const skip = (page - 1) * limit;
+  
+  // Build query conditions
+  const where: any = {};
+  
+  // Add search condition if provided
+  if (search) {
+    where.OR = [
+      { type: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } }
+    ];
+  }
+  
+  // Add type filter if provided
+  if (type) {
+    where.type = type;
+  }
+  
+  // Add status filter if provided
+  if (status) {
+    where.status = status;
+  }
+  
+  // Get total count for pagination
+  const totalCount = await prisma.device.count({ where });
+  
+  // Get paginated devices
+  const devices = await prisma.device.findMany({
+    where,
+    include: {
+      EndUser: {
+        include: {
+          User: true
+        }
+      },
+      Sale: true
+    },
+    orderBy: { createdAt: "desc" },
+    skip,
+    take: limit
+  });
+  
+  return {
+    devices,
+    pagination: {
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit)
+    }
+  };
+};
+
+// Update user password
+export const updateUserPassword = async (userId: number, newPassword: string) => {
+  // Hash the new password
+  const saltRounds = 10;
+  const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+  
+  // Update the user's password
+  return prisma.user.update({
+    where: { id: userId },
+    data: { password: hashedPassword }
+  });
 }; 

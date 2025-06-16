@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Role } from "@prisma/client";
+import { Role, DeviceStatus } from "@prisma/client";
 import * as commercialService from "../services/commercialService";
 
 // Helper function for standardized response format
@@ -98,8 +98,34 @@ export const getClientDetails = async (req: Request, res: Response): Promise<voi
 
 export const createClient = async (req: Request, res: Response): Promise<void> => {
   try {
-    // This is similar to the existing addEndUser endpoint, so we'll redirect
-    res.redirect(307, "/users/endUser/add");
+    const { email, password, firstname, lastname, phonenumber, address } = req.body;
+    
+    // Validate required fields
+    if (!email || !password || !firstname || !lastname || !phonenumber) {
+      res.status(400).json(
+        formatResponse(false, null, "Email, password, firstname, lastname, and phonenumber are required")
+      );
+      return;
+    }
+    
+    try {
+      const newClient = await commercialService.createClient(
+        email,
+        password,
+        firstname,
+        lastname,
+        phonenumber,
+        address
+      );
+      
+      res.status(201).json(formatResponse(true, newClient, "Client created successfully"));
+    } catch (err) {
+      if (err instanceof Error) {
+        res.status(400).json(formatResponse(false, null, err.message));
+        return;
+      }
+      throw err;
+    }
   } catch (error) {
     console.error("Error creating client:", error);
     res.status(500).json(formatResponse(false, null, "Failed to create client", error));
@@ -462,9 +488,21 @@ export const getSalesStats = async (req: Request, res: Response): Promise<void> 
 // Product endpoints
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Import and call the existing controller function
-    const { getAllDevices } = require("./deviceController");
-    return getAllDevices(req, res);
+    const page = parseInt(req.query.page as string || "1");
+    const limit = parseInt(req.query.limit as string || "10");
+    const search = req.query.search as string || "";
+    const type = req.query.type as string;
+    const status = req.query.status as DeviceStatus;
+    
+    const productsData = await commercialService.getProducts(
+      page,
+      limit,
+      search,
+      type,
+      status
+    );
+    
+    res.json(formatResponse(true, productsData, "Products retrieved successfully"));
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json(formatResponse(false, null, "Failed to retrieve products", error));
@@ -513,5 +551,144 @@ export const getProductStats = async (req: Request, res: Response): Promise<void
   } catch (error) {
     console.error("Error fetching product stats:", error);
     res.status(500).json(formatResponse(false, null, "Failed to retrieve product stats", error));
+  }
+};
+
+export const createProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { type, description, price, status } = req.body;
+    
+    // Validate required fields
+    if (!type) {
+      res.status(400).json(formatResponse(false, null, "Product type is required"));
+      return;
+    }
+    
+    try {
+      const newProduct = await commercialService.createProduct(
+        type,
+        description || "",
+        price ? parseFloat(price) : undefined,
+        status as DeviceStatus || DeviceStatus.connected
+      );
+      
+      res.status(201).json(formatResponse(true, newProduct, "Product created successfully"));
+    } catch (err) {
+      if (err instanceof Error) {
+        res.status(400).json(formatResponse(false, null, err.message));
+        return;
+      }
+      throw err;
+    }
+  } catch (error) {
+    console.error("Error creating product:", error);
+    res.status(500).json(formatResponse(false, null, "Failed to create product", error));
+  }
+};
+
+export const updateProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const deviceId = parseInt(id);
+    
+    if (isNaN(deviceId)) {
+      res.status(400).json(formatResponse(false, null, "Invalid device ID format"));
+      return;
+    }
+    
+    const { type, description, price, status } = req.body;
+    
+    // Check if device exists
+    const existingDevice = await commercialService.getProductById(deviceId);
+    
+    if (!existingDevice) {
+      res.status(404).json(formatResponse(false, null, `Product with ID ${id} not found`));
+      return;
+    }
+    
+    // Update device data using service
+    const updatedDevice = await commercialService.updateProduct(
+      deviceId,
+      type,
+      description,
+      price !== undefined ? parseFloat(price) : undefined,
+      status as DeviceStatus
+    );
+    
+    res.json(formatResponse(true, updatedDevice, "Product updated successfully"));
+  } catch (error) {
+    console.error("Error updating product:", error);
+    res.status(500).json(formatResponse(false, null, "Failed to update product", error));
+  }
+};
+
+export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const deviceId = parseInt(id);
+    
+    if (isNaN(deviceId)) {
+      res.status(400).json(formatResponse(false, null, "Invalid device ID format"));
+      return;
+    }
+    
+    try {
+      const result = await commercialService.deleteProduct(deviceId);
+      res.json(formatResponse(true, result, "Product deleted/deactivated successfully"));
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.message.includes("not found")) {
+          res.status(404).json(formatResponse(false, null, err.message));
+        } else {
+          res.status(400).json(formatResponse(false, null, err.message));
+        }
+        return;
+      }
+      throw err;
+    }
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    res.status(500).json(formatResponse(false, null, "Failed to delete product", error));
+  }
+};
+
+// Update client password
+export const updateClientPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const clientId = parseInt(id);
+    
+    if (isNaN(clientId)) {
+      res.status(400).json(formatResponse(false, null, "Invalid client ID format"));
+      return;
+    }
+    
+    const { password } = req.body;
+    
+    if (!password) {
+      res.status(400).json(formatResponse(false, null, "Password is required"));
+      return;
+    }
+    
+    // Check if client exists
+    const client = await commercialService.getClientById(clientId);
+    
+    if (!client) {
+      res.status(404).json(formatResponse(false, null, `Client with ID ${id} not found`));
+      return;
+    }
+    
+    if (client.role !== Role.endUser) {
+      res.status(400).json(formatResponse(false, null, "The specified user is not a client (endUser)"));
+      return;
+    }
+    
+    // Update the password
+    await commercialService.updateUserPassword(clientId, password);
+    
+    res.json(formatResponse(true, null, "Password updated successfully"));
+  } catch (error) {
+    console.error("Error updating password:", error);
+    res.status(500).json(formatResponse(false, null, "Failed to update password", error));
   }
 }; 
