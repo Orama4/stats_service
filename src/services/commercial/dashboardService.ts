@@ -68,7 +68,6 @@ export const getDashboardStats = async () => {
 };
 
 export const getSalesChartData = async (period: string = "month") => {
-  let dateFormat: string;
   let startDate: Date;
   
   const currentDate = new Date();
@@ -76,34 +75,76 @@ export const getSalesChartData = async (period: string = "month") => {
   // Configure time period for the query
   switch (period) {
     case "day":
-      dateFormat = "%Y-%m-%d %H:00";
       startDate = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
       break;
     case "week":
-      dateFormat = "%Y-%m-%d";
       startDate = new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000);
       break;
     case "year":
-      dateFormat = "%Y-%m";
       startDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), currentDate.getDate());
       break;
     case "month":
     default:
-      dateFormat = "%Y-%m-%d";
       startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, currentDate.getDate());
   }
   
-  // Query sales data grouped by the specified time period using raw SQL
-  const salesData = await prisma.$queryRaw`
-    SELECT 
-      DATE_FORMAT(createdAt, ${dateFormat}) as date,
-      COUNT(*) as count,
-      SUM(price) as revenue
-    FROM Sale
-    WHERE createdAt >= ${startDate}
-    GROUP BY date
-    ORDER BY date ASC
-  `;
+  // Query sales data with device information
+  const salesData = await prisma.sale.findMany({
+    where: {
+      createdAt: {
+        gte: startDate
+      }
+    },
+    include: {
+      Device: {
+        select: {
+          price: true
+        }
+      }
+    },
+    orderBy: {
+      createdAt: 'asc'
+    }
+  });
   
-  return salesData;
+  // Group data by period in JavaScript
+  const groupedData: Record<string, { count: number; revenue: number }> = {};
+  
+  salesData.forEach(sale => {
+    let dateKey: string;
+    const saleDate = new Date(sale.createdAt);
+    
+    switch (period) {
+      case "day":
+        dateKey = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}-${String(saleDate.getDate()).padStart(2, '0')} ${String(saleDate.getHours()).padStart(2, '0')}:00`;
+        break;
+      case "week":
+      case "month":
+        dateKey = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}-${String(saleDate.getDate()).padStart(2, '0')}`;
+        break;
+      case "year":
+        dateKey = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}`;
+        break;
+      default:
+        dateKey = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}-${String(saleDate.getDate()).padStart(2, '0')}`;
+    }
+    
+    if (!groupedData[dateKey]) {
+      groupedData[dateKey] = { count: 0, revenue: 0 };
+    }
+    
+    groupedData[dateKey].count++;
+    groupedData[dateKey].revenue += sale.Device?.price || 0;
+  });
+  
+  // Convert to array format expected by the frontend
+  const result = Object.entries(groupedData)
+    .map(([date, data]) => ({
+      date,
+      count: data.count,
+      revenue: data.revenue
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  
+  return result;
 }; 

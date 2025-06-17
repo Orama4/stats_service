@@ -101,7 +101,7 @@ export const updateClient = async (req: Request, res: Response): Promise<void> =
       return;
     }
     
-    const { email, firstname, lastname, phonenumber, address } = req.body;
+    const { email, firstname, lastname, phonenumber, address, status } = req.body;
     
     // Check if client exists
     const existingClient = await commercialService.getClientById(clientId);
@@ -123,7 +123,8 @@ export const updateClient = async (req: Request, res: Response): Promise<void> =
       firstname, 
       lastname, 
       phonenumber, 
-      address
+      address,
+      status
     );
     
     res.json(formatResponse(true, updatedClient, "Client updated successfully"));

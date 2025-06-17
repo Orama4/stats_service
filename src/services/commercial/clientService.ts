@@ -1,4 +1,4 @@
-import { Role, prisma, bcrypt } from "./utils";
+                        import { Role, prisma, bcrypt } from "./utils";
 
 // Client related services
 export const getClients = async (
@@ -81,9 +81,10 @@ export const updateClientData = async (
   firstname?: string,
   lastname?: string,
   phonenumber?: string,
-  address?: string
+  address?: string,
+  status?: string
 ) => {
-  // Update user and profile in a transaction
+  // Update user, profile, and endUser in a transaction
   return prisma.$transaction(async (tx) => {
     // Update user data if email is provided
     if (email) {
@@ -104,7 +105,7 @@ export const updateClientData = async (
     if (phonenumber) profileData.phonenumber = phonenumber;
     if (address) profileData.address = address;
     
-    // Only update if there are fields to update
+    // Only update profile if there are fields to update
     if (Object.keys(profileData).length > 0) {
       if (profile) {
         // Update profile if it exists
@@ -123,10 +124,21 @@ export const updateClientData = async (
       }
     }
     
-    // Return updated user with profile
+    // Update EndUser status if provided
+    if (status) {
+      await tx.endUser.update({
+        where: { userId: clientId },
+        data: { status }
+      });
+    }
+    
+    // Return updated user with profile and endUser data
     return tx.user.findUnique({
       where: { id: clientId },
-      include: { Profile: true }
+      include: { 
+        Profile: true,
+        EndUser: true
+      }
     });
   });
 };
@@ -263,7 +275,7 @@ export const getClientSalesHistory = async (
 
   // Build the where clause for sales filtering
   const whereClause: any = {
-    buyerId: client.EndUser.id
+    buyerId: client.id
   };
 
   // Add date filtering if provided
@@ -282,7 +294,7 @@ export const getClientSalesHistory = async (
 
   // Determine sort field mapping
   const sortField = sortBy === "date" ? "createdAt" : 
-                   sortBy === "amount" ? "Device" : "createdAt";
+                   sortBy === "amount" ? "createdAt" : "createdAt";
 
   // Get sales count for pagination
   const totalCount = await prisma.sale.count({
@@ -304,7 +316,7 @@ export const getClientSalesHistory = async (
       }
     },
     orderBy: {
-      [sortField === "Device" ? "createdAt" : sortField]: sortOrder
+      [sortField]: sortOrder
     },
     skip,
     take: limit
@@ -312,7 +324,7 @@ export const getClientSalesHistory = async (
 
   // Calculate summary statistics
   const allSales = await prisma.sale.findMany({
-    where: { buyerId: client.EndUser.id },
+    where: { buyerId: client.id },
     include: {
       Device: {
         select: {
@@ -428,7 +440,7 @@ export const getClientSalesStats = async (
   // Get sales for the period
   const periodSales = await prisma.sale.findMany({
     where: {
-      buyerId: client.EndUser.id,
+      buyerId: client.id,
       createdAt: {
         gte: startDate,
         lte: now
@@ -456,7 +468,7 @@ export const getClientSalesStats = async (
     
     const monthSales = await prisma.sale.findMany({
       where: {
-        buyerId: client.EndUser.id,
+        buyerId: client.id,
         createdAt: {
           gte: monthStart,
           lte: monthEnd
@@ -535,7 +547,7 @@ export const getClientSaleDetails = async (clientId: number, saleId: number) => 
   const sale = await prisma.sale.findFirst({
     where: {
       id: saleId,
-      buyerId: client.EndUser.id // Ensure sale belongs to this client
+      buyerId: client.id // Use client.id (User.id) not client.EndUser.id
     },
     include: {
       Device: {
