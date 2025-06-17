@@ -88,7 +88,7 @@ export const getSaleById = async (saleId: number) => {
   });
 };
 
-export const createSaleRecord = async (deviceId: number, endUserId: number, price?: number) => {
+export const createSaleRecord = async (deviceId: number, userId: number, price?: number) => {
   // Create sale and update device status in a transaction
   return prisma.$transaction(async (tx) => {
     // Get the device first
@@ -98,6 +98,15 @@ export const createSaleRecord = async (deviceId: number, endUserId: number, pric
     
     if (!device) {
       throw new Error(`Device with ID ${deviceId} not found`);
+    }
+    
+    // Get the EndUser record for the given userId
+    const endUser = await tx.endUser.findUnique({
+      where: { userId: userId }
+    });
+    
+    if (!endUser) {
+      throw new Error(`EndUser with userId ${userId} not found`);
     }
     
     // Update device price if needed
@@ -112,16 +121,16 @@ export const createSaleRecord = async (deviceId: number, endUserId: number, pric
     const sale = await tx.sale.create({
       data: {
         deviceId,
-        buyerId: endUserId,
+        buyerId: userId,
       }
     });
     
-    // Update device status to disconnected and associate with user
+    // Update device status to disconnected and associate with EndUser
     await tx.device.update({
       where: { id: deviceId },
       data: { 
         status: DeviceStatus.disconnected,
-        userId: endUserId
+        userId: endUser.id  // Use EndUser.id, not User.id
       }
     });
     

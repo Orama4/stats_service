@@ -338,4 +338,133 @@ export const updateClientPassword = async (req: Request, res: Response): Promise
     console.error("Error updating password:", error);
     res.status(500).json(formatResponse(false, null, "Failed to update password", error));
   }
+};
+
+// Get client sales history
+export const getClientSalesHistory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const clientId = parseInt(id);
+    
+    if (isNaN(clientId)) {
+      res.status(400).json(formatResponse(false, null, "Invalid client ID format"));
+      return;
+    }
+    
+    // Extract query parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
+    const sortBy = (req.query.sortBy as string) || "date";
+    const sortOrder = (req.query.sortOrder as "asc" | "desc") || "desc";
+    
+    // Validate sort parameters
+    if (!["date", "amount", "product"].includes(sortBy)) {
+      res.status(400).json(formatResponse(false, null, "Invalid sortBy parameter. Must be 'date', 'amount', or 'product'"));
+      return;
+    }
+    
+    if (!["asc", "desc"].includes(sortOrder)) {
+      res.status(400).json(formatResponse(false, null, "Invalid sortOrder parameter. Must be 'asc' or 'desc'"));
+      return;
+    }
+    
+    // Validate date formats if provided
+    if (startDate && isNaN(Date.parse(startDate))) {
+      res.status(400).json(formatResponse(false, null, "Invalid startDate format. Use ISO date format."));
+      return;
+    }
+    
+    if (endDate && isNaN(Date.parse(endDate))) {
+      res.status(400).json(formatResponse(false, null, "Invalid endDate format. Use ISO date format."));
+      return;
+    }
+    
+    // Get client sales history using service
+    const salesHistory = await commercialService.getClientSalesHistory(
+      clientId,
+      page,
+      limit,
+      startDate,
+      endDate,
+      sortBy,
+      sortOrder
+    );
+    
+    res.json(formatResponse(true, salesHistory, "Client sales history retrieved successfully"));
+  } catch (error) {
+    console.error("Error fetching client sales history:", error);
+    if (error instanceof Error && error.message === "Client not found") {
+      res.status(404).json(formatResponse(false, null, `Client with ID ${req.params.id} not found`));
+    } else {
+      res.status(500).json(formatResponse(false, null, "Failed to retrieve client sales history", error));
+    }
+  }
+};
+
+// Get client sales statistics
+export const getClientSalesStats = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const clientId = parseInt(id);
+    
+    if (isNaN(clientId)) {
+      res.status(400).json(formatResponse(false, null, "Invalid client ID format"));
+      return;
+    }
+    
+    // Extract query parameters
+    const period = (req.query.period as "month" | "quarter" | "year") || "year";
+    
+    // Validate period parameter
+    if (!["month", "quarter", "year"].includes(period)) {
+      res.status(400).json(formatResponse(false, null, "Invalid period parameter. Must be 'month', 'quarter', or 'year'"));
+      return;
+    }
+    
+    // Get client sales statistics using service
+    const salesStats = await commercialService.getClientSalesStats(clientId, period);
+    
+    res.json(formatResponse(true, salesStats, "Client sales statistics retrieved successfully"));
+  } catch (error) {
+    console.error("Error fetching client sales statistics:", error);
+    if (error instanceof Error && error.message === "Client not found") {
+      res.status(404).json(formatResponse(false, null, `Client with ID ${req.params.id} not found`));
+    } else {
+      res.status(500).json(formatResponse(false, null, "Failed to retrieve client sales statistics", error));
+    }
+  }
+};
+
+// Get specific sale details for a client
+export const getClientSaleDetails = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { clientId, saleId } = req.params;
+    const clientIdInt = parseInt(clientId);
+    const saleIdInt = parseInt(saleId);
+    
+    if (isNaN(clientIdInt) || isNaN(saleIdInt)) {
+      res.status(400).json(formatResponse(false, null, "Invalid client ID or sale ID format"));
+      return;
+    }
+    
+    // Get sale details using service
+    const saleDetails = await commercialService.getClientSaleDetails(clientIdInt, saleIdInt);
+    
+    res.json(formatResponse(true, saleDetails, "Sale details retrieved successfully"));
+  } catch (error) {
+    console.error("Error fetching sale details:", error);
+    if (error instanceof Error) {
+      if (error.message === "Client not found") {
+        res.status(404).json(formatResponse(false, null, `Client with ID ${req.params.clientId} not found`));
+      } else if (error.message === "Sale not found or does not belong to this client") {
+        res.status(404).json(formatResponse(false, null, `Sale with ID ${req.params.saleId} not found for client ${req.params.clientId}`));
+      } else {
+        res.status(500).json(formatResponse(false, null, "Failed to retrieve sale details", error));
+      }
+    } else {
+      res.status(500).json(formatResponse(false, null, "Failed to retrieve sale details", error));
+    }
+  }
 }; 

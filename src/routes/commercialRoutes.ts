@@ -987,11 +987,320 @@ router.put("/clients/:id", commercialController.updateClient);
  *       500:
  *         description: Server error
  */
+
+/**
+ * @swagger
+ * /commercial/clients/{id}/sales:
+ *   get:
+ *     summary: Get client sales history
+ *     tags: [Commercial]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Client ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Results per page
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter sales from this date (ISO format)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter sales until this date (ISO format)
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [date, amount, product]
+ *           default: date
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: Client sales history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/Response'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         client:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: integer
+ *                             email:
+ *                               type: string
+ *                             Profile:
+ *                               type: object
+ *                               properties:
+ *                                 firstname:
+ *                                   type: string
+ *                                 lastname:
+ *                                   type: string
+ *                                 phonenumber:
+ *                                   type: string
+ *                                 address:
+ *                                   type: string
+ *                         sales:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: integer
+ *                               saleDate:
+ *                                 type: string
+ *                                 format: date-time
+ *                               totalAmount:
+ *                                 type: number
+ *                               status:
+ *                                 type: string
+ *                                 enum: [completed, pending, cancelled]
+ *                               items:
+ *                                 type: array
+ *                                 items:
+ *                                   type: object
+ *                               paymentMethod:
+ *                                 type: string
+ *                                 enum: [cash, card, transfer]
+ *                               notes:
+ *                                 type: string
+ *                         summary:
+ *                           type: object
+ *                           properties:
+ *                             totalSales:
+ *                               type: integer
+ *                             totalAmount:
+ *                               type: number
+ *                             averageOrderValue:
+ *                               type: number
+ *                             lastPurchaseDate:
+ *                               type: string
+ *                               format: date-time
+ *                             favoriteProductType:
+ *                               type: string
+ *                         pagination:
+ *                           $ref: '#/components/schemas/PaginatedResponse/properties/data/properties/pagination'
+ *       400:
+ *         description: Invalid parameters
+ *       404:
+ *         description: Client not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /commercial/clients/{id}/sales/stats:
+ *   get:
+ *     summary: Get client sales statistics
+ *     tags: [Commercial]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Client ID
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [month, quarter, year]
+ *           default: year
+ *         description: Statistical period
+ *     responses:
+ *       200:
+ *         description: Client sales statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/Response'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         periodStats:
+ *                           type: object
+ *                           properties:
+ *                             period:
+ *                               type: string
+ *                             totalSales:
+ *                               type: integer
+ *                             totalAmount:
+ *                               type: number
+ *                             averageOrderValue:
+ *                               type: number
+ *                         monthlyTrend:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               month:
+ *                                 type: string
+ *                               salesCount:
+ *                                 type: integer
+ *                               revenue:
+ *                                 type: number
+ *                         productBreakdown:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               productType:
+ *                                 type: string
+ *                               quantity:
+ *                                 type: integer
+ *                               totalAmount:
+ *                                 type: number
+ *                               percentage:
+ *                                 type: number
+ *                         paymentMethodBreakdown:
+ *                           type: object
+ *                           properties:
+ *                             cash:
+ *                               type: number
+ *                             card:
+ *                               type: number
+ *                             transfer:
+ *                               type: number
+ *       400:
+ *         description: Invalid parameters
+ *       404:
+ *         description: Client not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /commercial/clients/{clientId}/sales/{saleId}:
+ *   get:
+ *     summary: Get specific sale details for a client
+ *     tags: [Commercial]
+ *     parameters:
+ *       - in: path
+ *         name: clientId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Client ID
+ *       - in: path
+ *         name: saleId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Sale ID
+ *     responses:
+ *       200:
+ *         description: Sale details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/Response'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         saleDate:
+ *                           type: string
+ *                           format: date-time
+ *                         totalAmount:
+ *                           type: number
+ *                         status:
+ *                           type: string
+ *                           enum: [completed, pending, cancelled]
+ *                         client:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: integer
+ *                             email:
+ *                               type: string
+ *                             Profile:
+ *                               type: object
+ *                         items:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: integer
+ *                               deviceId:
+ *                                 type: integer
+ *                               quantity:
+ *                                 type: integer
+ *                               unitPrice:
+ *                                 type: number
+ *                               totalPrice:
+ *                                 type: number
+ *                               Device:
+ *                                 type: object
+ *                         paymentMethod:
+ *                           type: string
+ *                           enum: [cash, card, transfer]
+ *                         notes:
+ *                           type: string
+ *                         salesPerson:
+ *                           type: string
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *                         updatedAt:
+ *                           type: string
+ *                           format: date-time
+ *       400:
+ *         description: Invalid parameters
+ *       404:
+ *         description: Client or sale not found
+ *       500:
+ *         description: Server error
+ */
 router.put("/clients/:id/password", commercialController.updateClientPassword);
 
 router.delete("/clients/:id", commercialController.deleteClient);
 router.get("/clients/:id/contacts", commercialController.getClientContacts);
 router.post("/clients/:id/contacts", commercialController.addClientContact);
 router.delete("/clients/:id/contacts/:contactId", commercialController.removeClientContact);
+
+// Client sales history endpoints - order matters! Define specific routes BEFORE parameterized routes
+router.get("/clients/:id/sales/stats", commercialController.getClientSalesStats);
+router.get("/clients/:id/sales", commercialController.getClientSalesHistory);
+router.get("/clients/:clientId/sales/:saleId", commercialController.getClientSaleDetails);
 
 export default router; 

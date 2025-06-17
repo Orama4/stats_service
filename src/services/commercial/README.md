@@ -42,7 +42,7 @@ This maintains the same interface as the original single file, so no changes are
 ### Sales Service
 - `getSales(page, limit, startDate, endDate, clientId, deviceType)` - Get paginated sales with filters
 - `getSaleById(saleId)` - Get specific sale details
-- `createSaleRecord(deviceId, endUserId, price)` - Create new sale record
+- `createSaleRecord(deviceId, userId, price)` - Create new sale record
 - `deleteSaleRecord(saleId)` - Delete sale record and revert device status
 
 ### Product Service

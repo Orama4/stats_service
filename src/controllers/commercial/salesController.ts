@@ -92,7 +92,7 @@ export const createSale = async (req: Request, res: Response): Promise<void> => 
     try {
       const result = await commercialService.createSaleRecord(
         deviceIdInt,
-        user.EndUser.id,
+        user.id,
         priceValue
       );
       

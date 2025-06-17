@@ -1,6 +1,6 @@
 # Commercial API Routes Documentation
 
-This document provides comprehensive details of all commercial API endpoints for frontend integration.
+This document provides comprehensive details of all 27 commercial API endpoints for frontend integration.
 
 ## Base URL
 All commercial routes are prefixed with `/commercial`
@@ -346,11 +346,186 @@ Removes an emergency contact from a client.
 }
 ```
 
+### 13. Get Client Sales History
+**GET** `/commercial/clients/:id/sales`
+
+Returns paginated sales history for a specific client with detailed information and summary statistics.
+
+**Path Parameters:**
+- `id`: number (required) - Client ID
+
+**Query Parameters:**
+- `page` (optional): number (default: 1) - Page number
+- `limit` (optional): number (default: 10) - Results per page
+- `startDate` (optional): string - Filter sales from this date (ISO format)
+- `endDate` (optional): string - Filter sales until this date (ISO format)
+- `sortBy` (optional): `date` | `amount` | `product` (default: `date`) - Field to sort by
+- `sortOrder` (optional): `asc` | `desc` (default: `desc`) - Sort order
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "client": {
+      "id": number,
+      "email": "string",
+      "Profile": {
+        "firstname": "string",
+        "lastname": "string",
+        "phonenumber": "string",
+        "address": "string"
+      }
+    },
+    "sales": [
+      {
+        "id": number,
+        "saleDate": "datetime",
+        "totalAmount": number,
+        "status": "completed" | "pending" | "cancelled",
+        "items": [
+          {
+            "id": number,
+            "deviceId": number,
+            "quantity": number,
+            "unitPrice": number,
+            "totalPrice": number,
+            "Device": {
+              "id": number,
+              "type": "string",
+              "nom": "string",
+              "description": "string"
+            }
+          }
+        ],
+        "paymentMethod": "cash" | "card" | "transfer",
+        "notes": "string"
+      }
+    ],
+    "summary": {
+      "totalSales": number,
+      "totalAmount": number,
+      "averageOrderValue": number,
+      "lastPurchaseDate": "datetime",
+      "favoriteProductType": "string"
+    },
+    "pagination": {
+      "total": number,
+      "page": number,
+      "limit": number,
+      "totalPages": number
+    }
+  },
+  "message": "Client sales history retrieved successfully"
+}
+```
+
+### 14. Get Client Sales Statistics
+**GET** `/commercial/clients/:id/sales/stats`
+
+Returns statistical information about a client's purchasing behavior including trends and breakdowns.
+
+**Path Parameters:**
+- `id`: number (required) - Client ID
+
+**Query Parameters:**
+- `period` (optional): `month` | `quarter` | `year` (default: `year`) - Statistical period
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "periodStats": {
+      "period": "string",
+      "totalSales": number,
+      "totalAmount": number,
+      "averageOrderValue": number
+    },
+    "monthlyTrend": [
+      {
+        "month": "string",
+        "salesCount": number,
+        "revenue": number
+      }
+    ],
+    "productBreakdown": [
+      {
+        "productType": "string",
+        "quantity": number,
+        "totalAmount": number,
+        "percentage": number
+      }
+    ],
+    "paymentMethodBreakdown": {
+      "cash": number,
+      "card": number,
+      "transfer": number
+    }
+  },
+  "message": "Client sales statistics retrieved successfully"
+}
+```
+
+### 15. Get Client Sale Details
+**GET** `/commercial/clients/:clientId/sales/:saleId`
+
+Returns detailed information about a specific sale for a specific client.
+
+**Path Parameters:**
+- `clientId`: number (required) - Client ID
+- `saleId`: number (required) - Sale ID
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": number,
+    "saleDate": "datetime",
+    "totalAmount": number,
+    "status": "completed" | "pending" | "cancelled",
+    "client": {
+      "id": number,
+      "email": "string",
+      "Profile": {
+        "firstname": "string",
+        "lastname": "string",
+        "phonenumber": "string",
+        "address": "string"
+      }
+    },
+    "items": [
+      {
+        "id": number,
+        "deviceId": number,
+        "quantity": number,
+        "unitPrice": number,
+        "totalPrice": number,
+        "Device": {
+          "id": number,
+          "type": "string",
+          "nom": "string",
+          "description": "string",
+          "macAdresse": "string"
+        }
+      }
+    ],
+    "paymentMethod": "cash" | "card" | "transfer",
+    "notes": "string",
+    "salesPerson": "string",
+    "createdAt": "datetime",
+    "updatedAt": "datetime"
+  },
+  "message": "Sale details retrieved successfully"
+}
+```
+
 ---
 
 ## Product Management Endpoints
 
-### 13. Get All Products
+### 16. Get All Products
 **GET** `/commercial/products`
 
 Returns paginated list of products with filtering capabilities.
@@ -391,7 +566,7 @@ Returns paginated list of products with filtering capabilities.
 }
 ```
 
-### 14. Get Product Details
+### 17. Get Product Details
 **GET** `/commercial/products/:id`
 
 Returns detailed information about a specific product.
@@ -418,7 +593,7 @@ Returns detailed information about a specific product.
 }
 ```
 
-### 15. Get Product Types
+### 18. Get Product Types
 **GET** `/commercial/products/types`
 
 Returns all distinct product types available.
@@ -432,7 +607,7 @@ Returns all distinct product types available.
 }
 ```
 
-### 16. Get Product Statistics
+### 19. Get Product Statistics
 **GET** `/commercial/products/stats`
 
 Returns product-related statistics.
@@ -446,7 +621,7 @@ Returns product-related statistics.
 }
 ```
 
-### 17. Create New Product
+### 20. Create New Product
 **POST** `/commercial/products`
 
 Creates a new product/device.
@@ -477,7 +652,7 @@ Creates a new product/device.
 }
 ```
 
-### 18. Update Product
+### 21. Update Product
 **PUT** `/commercial/products/:id`
 
 Updates product information.
@@ -504,7 +679,7 @@ Updates product information.
 }
 ```
 
-### 19. Delete Product
+### 22. Delete Product
 **DELETE** `/commercial/products/:id`
 
 Deletes or deactivates a product. Products with sales history are marked as disconnected; others are permanently deleted.
@@ -525,7 +700,7 @@ Deletes or deactivates a product. Products with sales history are marked as disc
 
 ## Sales Management Endpoints
 
-### 20. Get All Sales
+### 23. Get All Sales
 **GET** `/commercial/sales`
 
 Returns paginated list of sales with filtering capabilities.
@@ -576,7 +751,7 @@ Returns paginated list of sales with filtering capabilities.
 }
 ```
 
-### 21. Get Sale Details
+### 24. Get Sale Details
 **GET** `/commercial/sales/:id`
 
 Returns detailed information about a specific sale.
@@ -604,7 +779,7 @@ Returns detailed information about a specific sale.
 }
 ```
 
-### 22. Create New Sale
+### 25. Create New Sale
 **POST** `/commercial/sales`
 
 Creates a new sale record and updates device status.
@@ -632,7 +807,7 @@ Creates a new sale record and updates device status.
 }
 ```
 
-### 23. Delete Sale
+### 26. Delete Sale
 **DELETE** `/commercial/sales/:id`
 
 Deletes a sale record and reverts the device status back to connected.
@@ -649,7 +824,7 @@ Deletes a sale record and reverts the device status back to connected.
 }
 ```
 
-### 24. Get Sales Statistics
+### 27. Get Sales Statistics
 **GET** `/commercial/sales/stats`
 
 Returns sales-related statistics.
